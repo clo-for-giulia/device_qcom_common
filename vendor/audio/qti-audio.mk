@@ -1,0 +1,49 @@
+#
+# SPDX-FileCopyrightText: Paranoid Android
+# SPDX-License-Identifier: Apache-2.0
+#
+
+ifeq ($(call is-board-platform-in-list,sm6150),true)
+-include $(TOPDIR)vendor/qcom/opensource/audio-hal/primary-hal/configs/msmsteppe/msmsteppe.mk
+# Flag for inheriting audio_vendor_product.mk on >4.19 targets
+else ifeq (,$(filter 4.14 4.19, $(TARGET_KERNEL_VERSION)))
+-include $(TOPDIR)vendor/qcom/opensource/audio-hal/primary-hal/configs/audio_vendor_product.mk
+else
+-include $(TOPDIR)vendor/qcom/opensource/audio-hal/primary-hal/configs/$(TARGET_BOARD_PLATFORM)/$(TARGET_BOARD_PLATFORM).mk
+endif
+
+# Build Qualcomm common audio overlay
+TARGET_USES_RRO := true
+
+# Override proprietary definitions from SoC audio HAL Makefiles.
+AUDIO_FEATURE_ENABLED_DYNAMIC_LOG := false
+BOARD_SUPPORTS_OPENSOURCE_STHAL := false
+
+$(call soong_config_set,tinycompress,enable_extended_compress_format,true)
+
+# Flags for <5.10 targets
+ifneq (,$(filter 4.14 4.19 5.4, $(TARGET_KERNEL_VERSION)))
+$(call soong_config_set,tinycompress,loop_compress_read,true)
+endif
+
+# OMX not supported for 64bit_only builds
+# Only supported when SHIPPING_API_LEVEL is less than or equal to 33
+ifneq ($(TARGET_SUPPORTS_OMX_SERVICE),false)
+    PRODUCT_PACKAGES_SHIPPING_API_LEVEL_33 += \
+        libOmxAacEnc \
+        libOmxAmrEnc \
+        libOmxEvrcEnc \
+        libOmxG711Enc \
+        libOmxQcelp13Enc
+endif
+
+# Audio Packages
+PRODUCT_PACKAGES += \
+    libvolumelistener
+
+# Permissions
+PRODUCT_COPY_FILES += \
+    frameworks/native/data/etc/android.software.midi.xml:$(TARGET_COPY_OUT_VENDOR)/etc/permissions/android.software.midi.xml
+
+# Get non-open-source specific aspects.
+$(call inherit-product-if-exists, vendor/qcom/common/vendor/audio/audio-vendor.mk)
